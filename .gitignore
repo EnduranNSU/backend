@@ -1,0 +1,5 @@
+**/texts/
+backend-connector/
+qdrant_storage/
+model/
+**/.venv/
