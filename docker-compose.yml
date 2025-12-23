@@ -1,25 +1,11 @@
 services:
-  backend_connector:
-    build: backend-connector
-    ports:
-      - "1984:1984"
-    command:
-      "pdm run start"
-  retriever:
-    build: rag
-    ports:
-      - "5000:5000"
-    depends_on:
-      - qdrant
-    command:
-      "pdm run start"
   qdrant:
     image: qdrant/qdrant
     ports:
       - "6333:6333"
       - "6334:6334"
     volumes:
-      - ./qdrant_storage:/qdrant/storage
+      - qdrant_storage:/qdrant/storage
   db:
     image: postgres:16
     env_file:
@@ -40,6 +26,50 @@ services:
       - "9000:9000"
       - "9001:9001"
 
+
+  backend:
+    build: backend
+    ports:
+      - "8000:8000"
+    depends_on:
+      - db
+      - minio
+    command:
+      "pdm run start"
+    profiles:
+      - execution
+      
+  retriever:
+    build: rag
+    ports:
+      - "8888:8888"
+    depends_on:
+      - qdrant
+    command:
+      "pdm run start"
+    profiles:
+      - execution
+
+  setup_qdrant:
+    build: rag
+    depends_on:
+      - qdrant
+    command:
+      "pdm run populate_exercises"
+    profiles: 
+      - setup
+  
+  setup_db:
+    build: backend
+    depends_on:
+      - db
+      - minio
+    command:
+      "bash ./setup.sh"
+    profiles: 
+      - setup
+
 volumes:
   pg_data:
   minio_data:
+  qdrant_storage:

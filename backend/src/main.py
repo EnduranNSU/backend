@@ -20,4 +20,4 @@ server.include_router(training_router)
 if __name__ == "__main__":
     import uvicorn
 
-    uvicorn.run(server, host="0.0.0.0", port=8080)
+    uvicorn.run(server, host="0.0.0.0", port=8000)

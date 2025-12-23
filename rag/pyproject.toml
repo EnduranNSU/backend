@@ -5,7 +5,7 @@ description = "Default template for PDM package"
 authors = [
     {name = "Ivan Shebanov", email = "vanamokanov8@gmail.com"},
 ]
-dependencies = ["fastapi>=0.119.0", "qdrant-client>=1.15.1", "uvicorn>=0.37.0", "sentence-transformers>=5.1.1", "llama-cpp-python>=0.3.16", "huggingface-hub>=0.36.0"]
+dependencies = ["fastapi>=0.119.0", "qdrant-client>=1.15.1", "uvicorn>=0.37.0", "sentence-transformers>=5.1.1", "huggingface-hub>=0.36.0", "llama-cpp-python>=0.3.16"]
 requires-python = "==3.12.*"
 readme = "README.md"
 license = {text = "MIT"}

@@ -1,12 +1,17 @@
-FROM python:3.11-slim
+FROM python:3.12-slim
 
 WORKDIR /app
 
 RUN pip install pdm
 
-COPY pyproject.toml pdm.lock ./
-#RUN pdm install --prod --no-editable        <- ну по понятиям вот так надо
-#COPY ./src ./src                               но мы живем в тяжелые времена и эта хуйня будет подниматься типа минут 10
+# COPY pyproject.toml pdm.lock ./
+# RUN pdm install --prod --no-editable        <- ну по понятиям вот так надо
+# COPY ./src ./src                               но мы живем в тяжелые времена и эта хуйня будет подниматься типа минут 10
 #                                               поэтому COPY . .
 
-COPY . .
+# COPY . . <- сука или все таки по понятиям сделать
+
+COPY pyproject.toml pdm.lock ./
+RUN pdm install --prod --no-editable
+COPY ./src ./src
+COPY ./.env ./.env

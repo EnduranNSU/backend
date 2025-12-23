@@ -5,7 +5,6 @@ from dotenv import load_dotenv
 load_dotenv()
 
 DB_URL = os.getenv("DB_URL", "postgresql+asyncpg://user:password@localhost:5432/mydb")
-DB_URL = os.getenv("DB_LOCALHOST_URL", "postgresql+asyncpg://user:password@localhost:5432/mydb")
 
 engine = create_async_engine(
     DB_URL,

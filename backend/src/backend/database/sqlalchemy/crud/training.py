@@ -50,7 +50,7 @@ async def get_planned_training(
 
     stmt = (
         select(PlannedTrainnings)
-        .where(PlannedTrainnings.training_id == training_id)
+        .where(PlannedTrainnings.id == training_id)
         .options(
             selectinload(PlannedTrainnings.training)
             .selectinload(Training.perfomable_exercises)
@@ -88,7 +88,7 @@ async def create_planned_training(
             perf.sets.append(
                 Set(
                     weight=s.weight,
-                    repetions=s.repetitions,
+                    repetitions=s.repetitions,
                     rest_duration=s.rest_duration,
                 ))
         training.perfomable_exercises.append(perf)
@@ -110,11 +110,12 @@ async def create_planned_training(
 
 
 async def delete_planned_training(session: AsyncSession, training_id: int) -> None:
-    stmt = delete(PlannedTrainnings).where(PlannedTrainnings.training_id == training_id)
+    stmt = delete(PlannedTrainnings).where(PlannedTrainnings.id == training_id)
     await session.execute(stmt)
+    await session.commit()
 
 async def update_planned_training(session: AsyncSession, training_id: int, data: PlannedTrainingCreateUser) -> PlannedTrainingRead | None:
-    stmt = delete(PlannedTrainnings).where(PlannedTrainnings.training_id == training_id)
+    stmt = delete(PlannedTrainnings).where(PlannedTrainnings.id == training_id)
     await session.execute(stmt)
 
     return await create_planned_training(session, data)
@@ -161,7 +162,7 @@ async def get_user_performed_training(
 
     stmt = (
         select(UserPerformedTraining)
-        .where(UserPerformedTraining.training_id == training_id)
+        .where(UserPerformedTraining.id == training_id)
         .options(
             selectinload(UserPerformedTraining.training)
             .selectinload(Training.perfomable_exercises)
@@ -199,7 +200,7 @@ async def create_user_performed_training(
             perf.sets.append(
                 Set(
                     weight=s.weight,
-                    repetions=s.repetitions,
+                    repetitions=s.repetitions,
                     rest_duration=s.rest_duration,
                 ))
         training.perfomable_exercises.append(perf)
@@ -221,11 +222,11 @@ async def create_user_performed_training(
 
 
 async def delete_user_performed_training(session: AsyncSession, training_id: int) -> None:
-    stmt = delete(UserPerformedTraining).where(UserPerformedTraining.training_id == training_id)
+    stmt = delete(UserPerformedTraining).where(UserPerformedTraining.id == training_id)
     await session.execute(stmt)
 
 async def update_user_performed_training(session: AsyncSession, training_id: int, data: UserPerformedTrainingCreateUser) -> UserPerformedTrainingRead | None:
-    stmt = delete(UserPerformedTraining).where(UserPerformedTraining.training_id == training_id)
+    stmt = delete(UserPerformedTraining).where(UserPerformedTraining.id == training_id)
     await session.execute(stmt)
 
     return await create_user_performed_training(session, data)
