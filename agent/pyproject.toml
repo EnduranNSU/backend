@@ -5,7 +5,7 @@ description = "Default template for PDM package"
 authors = [
     {name = "Ivan Shebanov", email = "i.shebanov@g.nsu.ru"},
 ]
-dependencies = ["fastapi>=0.121.1", "langgraph>=1.0.0", "google-genai>=1.45.0", "langchain-google-genai>=3.0.0", "dotenv>=0.9.9", "uvicorn>=0.38.0"]
+dependencies = ["fastapi>=0.121.1", "langgraph>=1.0.0", "google-genai>=1.45.0", "langchain-google-genai>=3.0.0", "dotenv>=0.9.9", "uvicorn>=0.40.0", "langchain>=1.2.0", "deepagents>=0.3.1", "langchain-openai>=1.1.6", "httpx>=0.28.1"]
 requires-python = "==3.12.*"
 readme = "README.md"
 license = {text = "MIT"}
@@ -13,3 +13,7 @@ license = {text = "MIT"}
 
 [tool.pdm]
 distribution = false
+
+[tool.pdm.scripts]
+start.cmd = "python ./src/main.py"
+start.env = {PYTHONPATH = "./src"}

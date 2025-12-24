@@ -18,7 +18,7 @@ class Config(BaseModel):
 
 _config = {
     "qdrant": {
-        "host": "localhost",
+        "host": "qdrant",
         "port": 6333,
     },
     "llm_model": {

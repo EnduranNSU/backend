@@ -50,6 +50,18 @@ services:
     profiles:
       - execution
 
+  agent:
+    build: agent
+    ports:
+      - "8080:8080"
+    depends_on:
+      - backend
+      - retriever
+    command:
+      "pdm run start"
+    profiles:
+      - execution
+
   setup_qdrant:
     build: rag
     depends_on:
@@ -68,6 +80,7 @@ services:
       "bash ./setup.sh"
     profiles: 
       - setup
+
 
 volumes:
   pg_data:

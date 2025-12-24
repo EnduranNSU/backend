@@ -1,65 +1,123 @@
-from typing import TypedDict, List
-from langgraph.graph import StateGraph, END
-from langchain_openai import ChatOpenAI
-from langchain.tools import tool
-from langchain.schema import HumanMessage, AIMessage
+from typing import List, Any, Iterable
 
-# -------- State --------
-class AgentState(TypedDict):
-    messages: List
+from langgraph.graph import StateGraph, START, END
+from langgraph.checkpoint.memory import MemorySaver
 
-# -------- LLM --------
-llm = ChatOpenAI(model="gpt-4o-mini", temperature=0)
+from pydantic import BaseModel
+from langchain_core.messages import BaseMessage
+from langchain_core.tools import Tool
+from openai.types.chat import ChatCompletion, ChatCompletionMessageParam
 
-# -------- Tool --------
-@tool
-def multiply(a: int, b: int) -> int:
-    """Умножает два числа"""
-    return a * b
+from .model import client
 
-tools = [multiply]
+class GraphState(BaseModel):
+    messages: Any
+    tool_call: Any
+    user: str
 
-# -------- Nodes --------
-def agent_node(state: AgentState):
-    response = llm.invoke(state["messages"])
-    return {"messages": state["messages"] + [response]}
 
-def tool_node(state: AgentState):
-    last = state["messages"][-1]
-    tool_call = last.tool_calls[0]
+class Agent():
+    def __init__(self, tools):
+        self.model = client
+        self.tools = tools
+        
 
-    if tool_call["name"] == "multiply":
-        result = multiply.invoke(tool_call["args"])
-        return {
-            "messages": state["messages"] + [
-                AIMessage(content=str(result))
-            ]
-        }
+        async def make_plan(state: GraphState) -> GraphState:
+            
+            planner = self.model
 
-# -------- Router --------
-def router(state: AgentState):
-    last = state["messages"][-1]
-    if hasattr(last, "tool_calls") and last.tool_calls:
-        return "tool"
-    return END
+            print([agent_tool.openai_description for agent_tool in self.tools.values()])
+            print(state.messages)
 
-# -------- Graph --------
-graph = StateGraph(AgentState)
+            resp = planner.chat.completions.create(
+                model="gpt://b1g1q1f6qkc2rbf6anvo/qwen3-235b-a22b-fp8/latest",
+                messages=state.messages,
+                tools=[agent_tool.openai_description for agent_tool in self.tools.values()],
+            )
 
-graph.add_node("agent", agent_node)
-graph.add_node("tool", tool_node)
+            print(resp)
 
-graph.set_entry_point("agent")
+            print(resp)
 
-graph.add_conditional_edges(
-    "agent",
-    router,
-    {
-        "tool": "tool",
-        END: END
-    }
-)
+            if resp.choices[0].message.tool_calls == None:
+                state.messages.append(
+                    {
+                        "role": resp.choices[0].message.role,
+                        "content": resp.choices[0].message.content
+                    }
+                )
+            else:
+                state.messages.append(
+                    {
+                        "role": resp.choices[0].message.role,
+                        "tool_calls": resp.choices[0].message.tool_calls
+                    }
+                )
+                state.tool_call = resp.choices[0].message.tool_calls
 
-graph.add_edge("tool", "agent")
+            print(state.messages)
+            return GraphState.model_validate(state)
 
-app = graph.compile()
+        async def execute_plan(state: GraphState) -> GraphState:
+            for tool_call in state.tool_call:
+                func = tool_call.function
+                args = {}
+                res = await self.tools[func.name].tool(**args)
+                if res == None:
+                    res = ""
+                state.messages.append({"role": "tool", "tool_call_id": tool_call.id, "content": res})
+                state.tool_call.remove(tool_call)
+            return GraphState.model_validate(state)
+
+        async def has_steps(state: GraphState) -> bool:
+            if len(state.tool_call) > 0:
+                return True
+            return False
+
+        checkpointer = MemorySaver()
+
+        builder = StateGraph(GraphState)
+        builder.add_node("planner", make_plan)
+        builder.add_node("executor", execute_plan)
+
+        builder.add_edge(START, "planner")
+        builder.add_edge("executor", "planner")
+
+        builder.add_conditional_edges("planner", has_steps, {
+            True: "executor",
+            False: END
+        })
+
+        self.graph = builder.compile(checkpointer=checkpointer)
+
+
+    async def ainvoke(self, message, user_id, system_prompt: str = "Ты полезный ассистент"):
+            user_message = {
+                "role": "user",
+                "content": message
+            }
+            
+            try:
+                restored_state = GraphState(
+                    **self.graph.get_state(config={"configurable": {"thread_id": user_id}}).values)
+                state = GraphState(
+                    messages=restored_state.messages + [user_message], 
+                    tool_call=restored_state.tool_call,
+                    user=restored_state.user
+                )
+            except:
+                system_message = {
+                    "role": "system",
+                    "content": system_prompt
+                }
+                state = GraphState(
+                    messages=[system_message,user_message], 
+                    tool_call={},
+                    user=user_id
+                )
+            
+            state : GraphState = GraphState.model_validate(
+                    await self.graph.ainvoke(state, config={"configurable": {"thread_id": user_id}})
+                )
+
+            return state.messages
