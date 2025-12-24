@@ -97,7 +97,7 @@ async def get_user_performed_training_route(id: int,
 
 @router.post("/user_performed/create")
 async def create_user_performed_training_route(
-                    training_in: PlannedTrainningCreate,
+                    training_in: UserPerformedTrainingCreate,
                     user: UserRead = Depends(get_current_user),
                     session: AsyncSession = Depends(get_session)) -> UserPerformedTrainingRead:
     
