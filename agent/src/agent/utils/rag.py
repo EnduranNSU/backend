@@ -6,7 +6,7 @@ config = get_config()
 
 import httpx
 
-async def exercise_rag(query: str):
+async def exercise_rag(query: str, tags:list[str]):
 
     async with httpx.AsyncClient() as client:
         resp = await client.post(
@@ -15,7 +15,7 @@ async def exercise_rag(query: str):
                 "rag_name": "ex_cool",
                 "query": query,
                 "limit": 10,
-                "tags": []   
+                "tags": tags
             },
         )
 

@@ -3,6 +3,7 @@ from langchain_core.runnables import RunnableLambda
 from langchain_core.messages import HumanMessage, AIMessage
 
 client = OpenAI(
+
         base_url="https://llm.api.cloud.yandex.net/v1",
         project="b1g1q1f6qkc2rbf6anvo"
     )

@@ -14,6 +14,8 @@ class GraphState(BaseModel):
     messages: Any
     tool_call: Any
     user: str
+    user_id: int
+    user_token: str
 
 
 class Agent():
@@ -91,7 +93,8 @@ class Agent():
         self.graph = builder.compile(checkpointer=checkpointer)
 
 
-    async def ainvoke(self, message, user_id, system_prompt: str = "Ты полезный ассистент"):
+    async def ainvoke(self, message: str, chat_id:str, user_id:int,
+                       user_token:str, system_prompt: str = "Ты полезный ассистент"):
             user_message = {
                 "role": "user",
                 "content": message
@@ -99,11 +102,10 @@ class Agent():
             
             try:
                 restored_state = GraphState(
-                    **self.graph.get_state(config={"configurable": {"thread_id": user_id}}).values)
+                    **self.graph.get_state(config={"configurable": {"thread_id": chat_id}}).values)
                 state = GraphState(
                     messages=restored_state.messages + [user_message], 
-                    tool_call=restored_state.tool_call,
-                    user=restored_state.user
+                    **restored_state.model_dump()
                 )
             except:
                 system_message = {
@@ -113,11 +115,13 @@ class Agent():
                 state = GraphState(
                     messages=[system_message,user_message], 
                     tool_call={},
-                    user=user_id
+                    user=chat_id,
+                    user_id=user_id,
+                    user_token=user_token
                 )
             
             state : GraphState = GraphState.model_validate(
-                    await self.graph.ainvoke(state, config={"configurable": {"thread_id": user_id}})
+                    await self.graph.ainvoke(state, config={"configurable": {"thread_id": chat_id}})
                 )
 
             return state.messages

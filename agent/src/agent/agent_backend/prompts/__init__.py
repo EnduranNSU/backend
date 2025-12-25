@@ -1,1 +1,1 @@
-from .system_prompts import system_prompts
+from .system_prompts import user_inquire_system_prompt, exercise_prompt, create_training_prompt
