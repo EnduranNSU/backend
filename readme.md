@@ -6,7 +6,7 @@
 ```
 docker compose --profile setup up --build
 docker compose down # Вот эту штуку сделать надо, когда закончат исполняться контейнеры setup_db и setup_qdrant
-docker compose -profile execution up --build
+docker compose --profile execution up --build
 ```
 
 #### Первый запуск (по этой доке в том числе)
