@@ -2,6 +2,9 @@ from openai import OpenAI
 from langchain_core.runnables import RunnableLambda
 from langchain_core.messages import HumanMessage, AIMessage
 
+from dotenv import load_dotenv
+load_dotenv()
+
 client = OpenAI(
 
         base_url="https://llm.api.cloud.yandex.net/v1",

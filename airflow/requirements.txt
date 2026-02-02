@@ -1,0 +1,4 @@
+minio
+openai
+sentence-transformers
+qdrant-client

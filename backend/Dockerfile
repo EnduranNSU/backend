@@ -12,3 +12,4 @@ COPY ./setup.sh ./setup.sh
 COPY ./.env ./.env
 COPY ./alembic.ini ./alembic.ini
 COPY ./alembic ./alembic
+
