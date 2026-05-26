@@ -1,0 +1,22 @@
+[project]
+name = "llm"
+version = "0.1.0"
+description = "OpenAI-compatible LLM proxy (Yandex / OpenAI / Ollama)"
+authors = [
+    {name = "Ivan Shebanov", email = "vanamokanov8@gmail.com"},
+]
+dependencies = [
+    "fastapi>=0.121.0",
+    "uvicorn>=0.40.0",
+    "httpx>=0.28.1",
+]
+requires-python = "==3.12.*"
+license = {text = "MIT"}
+
+
+[tool.pdm]
+distribution = false
+
+[tool.pdm.scripts]
+start.cmd = "python ./src/main.py"
+start.env = {PYTHONPATH = "./src"}

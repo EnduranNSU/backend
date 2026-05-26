@@ -3,6 +3,7 @@ from pydantic import BaseModel
 from retriever.generator.collection_handler import CollectionHandler, CollectionEntry
 from retriever.scripts.exercises import get_exercises
 
+
 class Exercise(BaseModel):
     id: int
     title: str
@@ -11,10 +12,18 @@ class Exercise(BaseModel):
     tags: list[str]
 
 
+ch = CollectionHandler("exercises")
+
+# Skip if the collection already has points — keeps the script idempotent
+# so it is safe to run on every `docker compose up`.
+existing = ch.client.count(collection_name="exercises", exact=True).count
+if existing > 0:
+    print(f"exercises collection already populated ({existing} points), skipping")
+    raise SystemExit(0)
+
+
 exercises_list = get_exercises()
 
-
-ch = CollectionHandler("exercises")
 for exercise in exercises_list:
     description = exercise.description.split("\n\n\n")
 
@@ -25,50 +34,11 @@ for exercise in exercises_list:
     alternatives = description[5]
 
     entries = [
-        CollectionEntry(
-            text = technique,
-            payload = {
-                "text": technique,
-                "source": exercise.id,
-                "tags": [exercise.title, "technique"]
-            }
-        ),
-
-        CollectionEntry(
-            text = muscles,
-            payload = {
-                "text": muscles,
-                "source": exercise.id,
-                "tags": [exercise.title, "muscles"]
-            }
-        ),
-
-        CollectionEntry(
-            text = limitations,
-            payload = {
-                "text": limitations,
-                "source": exercise.id,
-                "tags": [exercise.title, "limitations"]
-            }
-        ),
-
-        CollectionEntry(
-            text = mistakes,
-            payload = {
-                "text": mistakes,
-                "source": exercise.id,
-                "tags": [exercise.title, "mistakes"]
-            }
-        ),
-
-        CollectionEntry(
-            text = alternatives,
-            payload = {
-                "text": alternatives,
-                "source": exercise.id,
-                "tags": [exercise.title, "alternatives"]
-            }
-        ),
+        CollectionEntry(text=technique,    payload={"text": technique,    "source": exercise.id, "tags": [exercise.title, "technique"]}),
+        CollectionEntry(text=muscles,      payload={"text": muscles,      "source": exercise.id, "tags": [exercise.title, "muscles"]}),
+        CollectionEntry(text=limitations,  payload={"text": limitations,  "source": exercise.id, "tags": [exercise.title, "limitations"]}),
+        CollectionEntry(text=mistakes,     payload={"text": mistakes,     "source": exercise.id, "tags": [exercise.title, "mistakes"]}),
+        CollectionEntry(text=alternatives, payload={"text": alternatives, "source": exercise.id, "tags": [exercise.title, "alternatives"]}),
     ]
 
     ch.write_data(entries)

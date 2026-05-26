@@ -1,19 +1,23 @@
 > Gospodi pomiluy
 
 ### How to run
-#### TL;DR
-Снести все volume-ы и контейнеры и выполнить
+
 ```
-docker compose --profile setup up --build
-docker compose down # Вот эту штуку сделать надо, когда закончат исполняться контейнеры setup_db и setup_qdrant
-docker compose --profile execution up --build
+docker compose up --build
 ```
 
-#### Первый запуск (по этой доке в том числе)
-1. Если в докере что-то есть связанное с этим проектом, удалить это. Все volumes, все контейнеры, раньше он создавал в . папку minio_data или что-то такое, это тоже надо снести
-2. Еще раз перепроверяем, что нет связанных контейнеров, можно через ``docker container prune`` снести ВСЕ(не только эти) остановаленные контейнеры и через ``docker volume prune`` снести все вольюмы остановленных контейнеров, но последняя меня обманывала и не удаляля всё, что нужно, поэтому ей лучше особо не доверять. Просто проверить, что ниче связанного с этим проектом нет: это можно сделать через ``docker container ls`` и ``docker volume ls``
-3. Затем выполнить нужно всего лишь одну комманду ``docker compose --profile setup up --build``. Эта штука должна сама провести сборку всех образов, запуск контейнеров ``minio``, ``pg`` и ``qdrant``, но самое важное, что запустит два сетап контейнера ``setup_db`` и ``setup_qdrant``, которые сконфигурируют все хранилища и заполнят их упражнениями.
-4. Кладём все контейнеры ``docker compose down``.  Смело переходим к шагу обычного запуска.
+Всё. `setup_db` и `setup_qdrant` поднимаются как init-контейнеры, накатывают миграции/упражнения, выходят, остальные сервисы ждут их через `depends_on: service_completed_successfully`. Скрипты идемпотентные — перезапуски ничего не ломают.
 
-#### Обычный запуск
-1. ``docker compose --profile execution up --build``
+### Сервисы и порты
+- `gateway`     `:8001` — единая точка входа для фронта (проксит всё ниже)
+- `backend`     `:8000` — auth/users/exercises/training/measurements
+- `retriever`   `:8888` — RAG по упражнениям
+- `agent`       `:8080` — LLM-агент
+- `cv_service`  `:9090` — `POST /cv/analyze` (видео приседа → метрики)
+- `db`          `:5432`, `minio` `:9000/9001`, `qdrant` `:6333/6334`
+
+### Через gateway (`http://localhost:8001`)
+- `/token`, `/signup`, `/user`, `/exercise`, `/training`, `/measurements` → backend
+- `/search/exercise`, `/search/user` → retriever (префикс `/search` срезается)
+- `/agent/*` → agent
+- `/cv/*` → cv_service

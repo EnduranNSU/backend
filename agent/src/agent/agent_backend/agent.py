@@ -1,14 +1,13 @@
-from typing import List, Any, Iterable
+import json
+from typing import Any
 
 from langgraph.graph import StateGraph, START, END
 from langgraph.checkpoint.memory import MemorySaver
 
 from pydantic import BaseModel
-from langchain_core.messages import BaseMessage
-from langchain_core.tools import Tool
-from openai.types.chat import ChatCompletion, ChatCompletionMessageParam
 
-from .model import client
+from .model import client, CHAT_MODEL
+
 
 class GraphState(BaseModel):
     messages: Any
@@ -18,110 +17,123 @@ class GraphState(BaseModel):
     user_token: str
 
 
-class Agent():
+def _normalize_tool_call(tc: Any) -> dict:
+    """OpenAI tool_call → plain dict (works for raw SDK objects and restored dicts)."""
+    if isinstance(tc, dict):
+        return {
+            "id": tc.get("id"),
+            "type": tc.get("type", "function"),
+            "function": {
+                "name": tc.get("function", {}).get("name"),
+                "arguments": tc.get("function", {}).get("arguments", "{}"),
+            },
+        }
+    return {
+        "id": tc.id,
+        "type": "function",
+        "function": {"name": tc.function.name, "arguments": tc.function.arguments},
+    }
+
+
+class Agent:
     def __init__(self, tools):
         self.model = client
         self.tools = tools
-        
 
         async def make_plan(state: GraphState) -> GraphState:
-            
-            planner = self.model
-
-            print([agent_tool.openai_description for agent_tool in self.tools.values()])
-            print(state.messages)
-
-            resp = planner.chat.completions.create(
-                model="gpt://b1g1q1f6qkc2rbf6anvo/qwen3-235b-a22b-fp8/latest",
+            resp = self.model.chat.completions.create(
+                model=CHAT_MODEL,
                 messages=state.messages,
-                tools=[agent_tool.openai_description for agent_tool in self.tools.values()],
+                tools=[t.openai_description for t in self.tools.values()],
             )
+            msg = resp.choices[0].message
 
-            print(resp)
-
-            print(resp)
-
-            if resp.choices[0].message.tool_calls == None:
-                state.messages.append(
-                    {
-                        "role": resp.choices[0].message.role,
-                        "content": resp.choices[0].message.content
-                    }
-                )
+            if not msg.tool_calls:
+                state.messages.append({"role": "assistant", "content": msg.content or ""})
+                state.tool_call = []
             else:
-                state.messages.append(
-                    {
-                        "role": resp.choices[0].message.role,
-                        "tool_calls": resp.choices[0].message.tool_calls
-                    }
-                )
-                state.tool_call = resp.choices[0].message.tool_calls
+                tool_calls = [_normalize_tool_call(tc) for tc in msg.tool_calls]
+                state.messages.append({
+                    "role": "assistant",
+                    "content": msg.content or "",
+                    "tool_calls": tool_calls,
+                })
+                state.tool_call = tool_calls
 
-            print(state.messages)
             return GraphState.model_validate(state)
 
         async def execute_plan(state: GraphState) -> GraphState:
-            for tool_call in state.tool_call:
-                func = tool_call.function
-                args = {}
-                res = await self.tools[func.name].tool(**args)
-                if res == None:
+            pending = list(state.tool_call)
+            state.tool_call = []
+
+            for raw in pending:
+                tc = _normalize_tool_call(raw)
+                name = tc["function"]["name"]
+                try:
+                    args = json.loads(tc["function"]["arguments"] or "{}")
+                except json.JSONDecodeError:
+                    args = {}
+
+                if name not in self.tools:
+                    res = f"tool '{name}' is not registered"
+                else:
+                    try:
+                        res = await self.tools[name].tool(**args)
+                    except Exception as exc:
+                        res = f"tool '{name}' raised: {exc}"
+
+                if res is None:
                     res = ""
-                state.messages.append({"role": "tool", "tool_call_id": tool_call.id, "content": res})
-                state.tool_call.remove(tool_call)
+                if not isinstance(res, str):
+                    res = json.dumps(res, ensure_ascii=False, default=str)
+
+                state.messages.append({
+                    "role": "tool",
+                    "tool_call_id": tc["id"],
+                    "content": res,
+                })
+
             return GraphState.model_validate(state)
 
         async def has_steps(state: GraphState) -> bool:
-            if len(state.tool_call) > 0:
-                return True
-            return False
-
-        checkpointer = MemorySaver()
+            return len(state.tool_call) > 0
 
         builder = StateGraph(GraphState)
         builder.add_node("planner", make_plan)
         builder.add_node("executor", execute_plan)
-
         builder.add_edge(START, "planner")
         builder.add_edge("executor", "planner")
+        builder.add_conditional_edges("planner", has_steps, {True: "executor", False: END})
 
-        builder.add_conditional_edges("planner", has_steps, {
-            True: "executor",
-            False: END
-        })
+        self.graph = builder.compile(checkpointer=MemorySaver())
 
-        self.graph = builder.compile(checkpointer=checkpointer)
+    async def ainvoke(self, message: str, chat_id: str, user_id: int,
+                      user_token: str, system_prompt: str = "Ты полезный ассистент"):
+        user_message = {"role": "user", "content": message}
 
+        try:
+            restored = self.graph.get_state(config={"configurable": {"thread_id": chat_id}}).values
+            restored_state = GraphState(**restored)
+            state = GraphState(
+                messages=restored_state.messages + [user_message],
+                tool_call=[],
+                user=restored_state.user,
+                user_id=restored_state.user_id,
+                user_token=user_token,
+            )
+        except Exception:
+            state = GraphState(
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    user_message,
+                ],
+                tool_call=[],
+                user=chat_id,
+                user_id=user_id,
+                user_token=user_token,
+            )
 
-    async def ainvoke(self, message: str, chat_id:str, user_id:int,
-                       user_token:str, system_prompt: str = "Ты полезный ассистент"):
-            user_message = {
-                "role": "user",
-                "content": message
-            }
-            
-            try:
-                restored_state = GraphState(
-                    **self.graph.get_state(config={"configurable": {"thread_id": chat_id}}).values)
-                state = GraphState(
-                    messages=restored_state.messages + [user_message], 
-                    **restored_state.model_dump()
-                )
-            except:
-                system_message = {
-                    "role": "system",
-                    "content": system_prompt
-                }
-                state = GraphState(
-                    messages=[system_message,user_message], 
-                    tool_call={},
-                    user=chat_id,
-                    user_id=user_id,
-                    user_token=user_token
-                )
-            
-            state : GraphState = GraphState.model_validate(
-                    await self.graph.ainvoke(state, config={"configurable": {"thread_id": chat_id}})
-                )
-
-            return state.messages
+        result = await self.graph.ainvoke(
+            state, config={"configurable": {"thread_id": chat_id}}
+        )
+        return GraphState.model_validate(result).messages

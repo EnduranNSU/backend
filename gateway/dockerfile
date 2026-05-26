@@ -1,0 +1,10 @@
+FROM python:3.12-slim
+
+WORKDIR /app
+
+RUN pip install pdm
+
+COPY pyproject.toml ./
+RUN pdm install --prod --no-editable --no-lock
+
+COPY ./src ./src

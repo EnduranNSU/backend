@@ -1,11 +1,16 @@
-import torch
-from sentence_transformers import SentenceTransformer
-from llama_cpp import Llama, ChatCompletionRequestMessage
+"""HyDE embedder: ask the LLM proxy for a hypothetical answer, then embed it."""
+from __future__ import annotations
 
-llm = Llama.from_pretrained(
-	repo_id="Qwen/Qwen2.5-1.5B-Instruct-GGUF",
-	filename="qwen2.5-1.5b-instruct-fp16.gguf",
-)
+import os
+
+import httpx
+from sentence_transformers import SentenceTransformer
+
+
+LLM_BASE_URL = os.environ.get("LLM_BASE_URL", "http://llm:9000/v1")
+LLM_CHAT_MODEL = os.environ.get("LLM_CHAT_MODEL", "default")
+LLM_API_KEY = os.environ.get("LLM_API_KEY", "proxy")
+
 
 SYSTEM_PROMPT = {
     "role": "system",
@@ -17,37 +22,37 @@ SYSTEM_PROMPT = {
         "Не упоминай, что это гипотеза. "
         "Не задавай вопросов. "
         "Без воды и вступлений."
-    )
+    ),
 }
 
+
+def _hyde(request: str, system_prompt_on: bool) -> str:
+    messages = []
+    if system_prompt_on:
+        messages.append(SYSTEM_PROMPT)
+    messages.append({"role": "user", "content": request})
+
+    payload = {
+        "model": LLM_CHAT_MODEL,
+        "messages": messages,
+        "max_tokens": 256,
+        "temperature": 0.7,
+    }
+    headers = {"Authorization": f"Bearer {LLM_API_KEY}"}
+
+    with httpx.Client(timeout=60.0) as client:
+        resp = client.post(f"{LLM_BASE_URL}/chat/completions",
+                           json=payload, headers=headers)
+        resp.raise_for_status()
+        data = resp.json()
+    return str(data["choices"][0]["message"]["content"])
 
 
 class HydeEmbedder:
     def __init__(self, system_prompt_on: bool = True):
-        self.llm = llm
         self.system_prompt_on = system_prompt_on
-
-        self.system_prompt = SYSTEM_PROMPT
         self.embedder = SentenceTransformer("all-MiniLM-L6-v2")
 
     def __call__(self, request: str, **kwargs):
-        messages = []
-
-        if self.system_prompt_on:
-            messages.append(self.system_prompt)
-
-        messages.append({
-            "role": "user",
-            "content": request
-        })
-
-        res = self.llm.create_chat_completion(
-            messages=messages,
-            max_tokens=256,
-            temperature=0.7,
-        )
-
-        print(res)
-
-        hyde_text = str(res["choices"][0]["message"]["content"])
+        hyde_text = _hyde(request, self.system_prompt_on)
         return [self.embedder.encode(hyde_text)]

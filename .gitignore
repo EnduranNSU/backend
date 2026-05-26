@@ -3,3 +3,9 @@ backend-connector/
 qdrant_storage/
 model/
 **/.venv/
+.env
+**/.env
+!backend/.env
+!rag/.env
+!agent/.env
+*.claude

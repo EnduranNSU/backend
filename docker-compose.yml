@@ -1,11 +1,4 @@
 services:
-  qdrant:
-    image: qdrant/qdrant
-    ports:
-      - "6333:6333"
-      - "6334:6334"
-    volumes:
-      - qdrant_storage:/qdrant/storage
   db:
     image: postgres:16
     env_file:
@@ -14,6 +7,11 @@ services:
       - pg_data:/var/lib/postgresql/data
     ports:
       - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
 
   minio:
     image: minio/minio:latest
@@ -25,62 +23,103 @@ services:
     ports:
       - "9000:9000"
       - "9001:9001"
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c '</dev/tcp/127.0.0.1/9000' || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
 
+  qdrant:
+    image: qdrant/qdrant
+    ports:
+      - "6333:6333"
+      - "6334:6334"
+    volumes:
+      - qdrant_storage:/qdrant/storage
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c '</dev/tcp/127.0.0.1/6333' || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  setup_db:
+    build: backend
+    depends_on:
+      db:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    command: "bash ./setup.sh"
+    restart: "no"
+
+  llm:
+    build: llm
+    env_file:
+      - .env
+    ports:
+      - "9100:9000"
+    command: "pdm run start"
 
   backend:
     build: backend
     ports:
       - "8000:8000"
     depends_on:
-      - db
-      - minio
-    command:
-      "pdm run start"
-    profiles:
-      - execution
-      
-  retriever:
-    build: rag
-    ports:
-      - "8888:8888"
-    depends_on:
-      - qdrant
-    command:
-      "pdm run start"
-    profiles:
-      - execution
+      setup_db:
+        condition: service_completed_successfully
+    command: "pdm run start"
 
-  agent:
-    build: agent
+  cv_service:
+    build: cv_service
     ports:
-      - "8080:8080"
-    depends_on:
-      - backend
-      - retriever
-    command:
-      "pdm run start"
-    profiles:
-      - execution
+      - "9090:9090"
+    command: "pdm run start"
 
   setup_qdrant:
     build: rag
     depends_on:
-      - qdrant
-    command:
-      "pdm run populate_exercises"
-    profiles: 
-      - setup
-  
-  setup_db:
-    build: backend
-    depends_on:
-      - db
-      - minio
-    command:
-      "bash ./setup.sh"
-    profiles: 
-      - setup
+      qdrant:
+        condition: service_healthy
+    command: "pdm run populate_exercises"
+    restart: "no"
 
+  retriever:
+    build: rag
+    env_file:
+      - .env
+    ports:
+      - "8888:8888"
+    depends_on:
+      setup_qdrant:
+        condition: service_completed_successfully
+      llm:
+        condition: service_started
+    command: "pdm run start"
+
+  agent:
+    build: agent
+    env_file:
+      - .env
+    ports:
+      - "8080:8080"
+    depends_on:
+      - backend
+      - cv_service
+      - llm
+      - retriever
+    command: "pdm run start"
+
+  gateway:
+    build: gateway
+    ports:
+      - "8001:8001"
+    depends_on:
+      - backend
+      - agent
+      - cv_service
+      - llm
+      - retriever
+    command: "pdm run start"
 
 volumes:
   pg_data:

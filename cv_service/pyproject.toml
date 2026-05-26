@@ -1,0 +1,31 @@
+[project]
+name = "cv_service"
+version = "0.1.0"
+description = "Squat-quality CV analysis service"
+authors = [
+    {name = "Ivan Shebanov", email = "vanamokanov8@gmail.com"},
+]
+dependencies = [
+    "mediapipe>=0.10.32",
+    "opencv-python-headless>=4.10.0",
+    "numpy>=2.0.0",
+    "fastapi>=0.121.0",
+    "uvicorn[standard]>=0.40.0",
+    "websockets>=13.0",
+    "python-multipart>=0.0.21",
+]
+requires-python = "==3.12.*"
+readme = "README.md"
+license = {text = "MIT"}
+
+[build-system]
+requires = ["pdm-backend"]
+build-backend = "pdm.backend"
+
+
+[tool.pdm]
+distribution = false
+
+[tool.pdm.scripts]
+start.cmd = "python ./src/main.py"
+start.env = {PYTHONPATH = "./src"}

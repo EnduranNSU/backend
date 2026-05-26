@@ -1,8 +1,11 @@
 import json
 from pydantic import BaseModel
 
+from sqlalchemy import select
+
 from backend.database.sqlalchemy.session import create_session
 from backend.database.sqlalchemy.crud.exercise import create_exercise
+from backend.database.sqlalchemy.orm_models import Exercise as ExerciseORM
 from backend.models.exercise import ExerciseCreate
 
 from backend.minio.S3Client import S3Client
@@ -34,7 +37,13 @@ with open(path, "r", encoding="utf-8") as f:
 
 async def main():
     session = await create_session()
+    existing = await session.execute(select(ExerciseORM.title))
+    existing_titles = {row[0] for row in existing.all()}
+
     for exercise in exercises:
+        if exercise.title in existing_titles:
+            print(f"skip (exists): {exercise.title}")
+            continue
         exercise_create = ExerciseCreate(
             title=exercise.title,
             description=exercise.description,
@@ -43,6 +52,7 @@ async def main():
         )
 
         await create_exercise(session, exercise_create)
+        print(f"inserted: {exercise.title}")
     await session.close()
 
 import asyncio
