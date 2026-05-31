@@ -31,8 +31,8 @@ def search(req: SearchRequest):
         )
 
     rag = available_rags[req.rag_name]
-    search_result = rag.request(req.query, tags=req.tags)
-    
+    search_result = rag.request(req.query, tags=req.tags, limit=req.limit)
+
     return {"results": search_result}
 
 

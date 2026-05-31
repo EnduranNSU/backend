@@ -13,11 +13,10 @@ class TagOnlyRetriever:
     def __call__(self, embedded_queries: list[torch.Tensor], tags: list[str], **kwargs):
         results = []
         for embedding in embedded_queries:
-            hits = self.client.search(
+            resp = self.client.query_points(
                 collection_name=self.collection_name,
-                query_vector= embedding.tolist(),
+                query=embedding.tolist(),
                 limit=5,
-
                 query_filter=Filter(
                     must=[
                         FieldCondition(
@@ -25,8 +24,8 @@ class TagOnlyRetriever:
                             match=MatchAny(any=tags)
                         )
                     ]
-                )
+                ),
             )
-            results.extend(hits)
+            results.extend(resp.points)
         return results
 

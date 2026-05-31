@@ -1,9 +1,10 @@
 import os
 import tempfile
 
-from fastapi import APIRouter, File, HTTPException, UploadFile, status
+from fastapi import APIRouter, File, HTTPException, Query, UploadFile, status
 
 from cv_service.analyzer import analyze_video
+from cv_service.exercises import EXERCISE_MAP
 
 
 router = APIRouter(prefix="/cv", tags=["cv"])
@@ -15,10 +16,20 @@ MODEL_PATH = os.environ.get(
 )
 
 _ALLOWED_SUFFIXES = {".mp4", ".mov", ".webm", ".avi", ".mkv", ".gif"}
+_SUPPORTED_EXERCISES = set(EXERCISE_MAP.keys())
 
 
 @router.post("/analyze")
-async def analyze(video: UploadFile = File(...)):
+async def analyze(
+    video: UploadFile = File(...),
+    exercise: str = Query(default="squat", description="Exercise type: squat, pushup, lunge, deadlift"),
+):
+    if exercise not in _SUPPORTED_EXERCISES:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=f"Unsupported exercise: {exercise}. Supported: {sorted(_SUPPORTED_EXERCISES)}",
+        )
+
     suffix = os.path.splitext(video.filename or "")[1].lower() or ".mp4"
     if suffix not in _ALLOWED_SUFFIXES:
         raise HTTPException(
@@ -41,7 +52,7 @@ async def analyze(video: UploadFile = File(...)):
         tmp_path = tmp.name
 
     try:
-        report = analyze_video(tmp_path, MODEL_PATH)
+        report = analyze_video(tmp_path, MODEL_PATH, exercise=exercise)
     finally:
         try:
             os.unlink(tmp_path)
@@ -51,6 +62,19 @@ async def analyze(video: UploadFile = File(...)):
     return report.to_dict()
 
 
+@router.get("/exercises")
+async def list_exercises():
+    from cv_service.exercises import EXERCISE_LABELS
+    return sorted(
+        [{"slug": slug, "label": label} for slug, label in EXERCISE_LABELS.items()],
+        key=lambda x: x["label"],
+    )
+
+
 @router.get("/health")
 async def health():
-    return {"status": "ok", "model_present": os.path.exists(MODEL_PATH)}
+    return {
+        "status": "ok",
+        "model_present": os.path.exists(MODEL_PATH),
+        "supported_exercises": sorted(_SUPPORTED_EXERCISES),
+    }

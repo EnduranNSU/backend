@@ -8,11 +8,11 @@ async def tool(info: str, user_id: int):
 openai_description = {
     "type": "function",
     "function": {
-            "name": "user_rag_download",
-            "description": ("Инструмент для сохранение информации о пользователе в RAG",
-                            "ДОЛЖЕН ИСПОЛЬЗОВАТЬСЯ, чтобы сохранить информацию о предпочтениях пользователя",
-                            "ДОЛЖЕН ИСПОЛЬЗОВАТЬСЯ, чтобы сохранить информацию об ограничениях пользователя",
-                            "ДОЛЖЕН ИСПОЛЬЗОВАТЬСЯ, чтобы сохранить информацию, которая поможет узнать пользователя получше",),
+            "name": "user_rag_upload",
+            "description": (
+                "Сохранить информацию о пользователе в RAG. "
+                "Вызывай после того, как пользователь сообщил свои цели, уровень или ограничения."
+            ),
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -27,6 +27,6 @@ openai_description = {
 }
 
 
-user_rag_upload_tool = AgentTool("user_rag_download", tool, openai_description)
+user_rag_upload_tool = AgentTool("user_rag_upload", tool, openai_description)
 
 

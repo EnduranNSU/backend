@@ -1,3 +1,4 @@
+import inspect
 import json
 from typing import Any
 
@@ -78,6 +79,11 @@ class Agent:
                     res = f"tool '{name}' is not registered"
                 else:
                     try:
+                        sig = inspect.signature(self.tools[name].tool)
+                        if "user_id" in sig.parameters:
+                            args["user_id"] = state.user_id
+                        if "user_token" in sig.parameters:
+                            args["user_token"] = state.user_token
                         res = await self.tools[name].tool(**args)
                     except Exception as exc:
                         res = f"tool '{name}' raised: {exc}"

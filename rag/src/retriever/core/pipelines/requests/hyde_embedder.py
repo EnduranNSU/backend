@@ -51,7 +51,7 @@ def _hyde(request: str, system_prompt_on: bool) -> str:
 class HydeEmbedder:
     def __init__(self, system_prompt_on: bool = True):
         self.system_prompt_on = system_prompt_on
-        self.embedder = SentenceTransformer("all-MiniLM-L6-v2")
+        self.embedder = SentenceTransformer("paraphrase-multilingual-MiniLM-L12-v2")
 
     def __call__(self, request: str, **kwargs):
         hyde_text = _hyde(request, self.system_prompt_on)

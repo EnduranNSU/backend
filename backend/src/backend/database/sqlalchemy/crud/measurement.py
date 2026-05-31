@@ -8,28 +8,20 @@ from backend.database.sqlalchemy.orm_models import Measurement
 password_hash = PasswordHash.recommended()
 
 async def create_measurement(session: AsyncSession, measurement_in: MeasurementCreate) -> MeasurementRead | None:
-    measurement = Measurement(user_id=measurement_in.user_id, 
-                           type=measurement_in.type, 
-                           value=measurement_in.value, 
+    measurement = Measurement(user_id=measurement_in.user_id,
+                           type=measurement_in.type,
+                           value=measurement_in.value,
                            date=measurement_in.date)
     session.add(measurement)
     await session.commit()
     await session.refresh(measurement)
 
-
-    stmt = select(Measurement).where(Measurement.type == measurement_in.type)
-    result = await session.execute(stmt)
-    measurement = result.scalar_one_or_none()
-
-    if measurement is None:
-        return None
-    
-    exercise_read = MeasurementRead(id=measurement.id, 
-                                    type=measurement.type, 
-                                    value=measurement.value, 
-                                    date=measurement.date)
-
-    return exercise_read
+    return MeasurementRead(
+        id=measurement.id,
+        type=measurement.type,
+        value=measurement.value,
+        date=measurement.date,
+    )
 
 async def get_measurements(session:AsyncSession, user_id: int) -> list[MeasurementRead]:
     stmt = select(Measurement).where(Measurement.user_id == user_id)

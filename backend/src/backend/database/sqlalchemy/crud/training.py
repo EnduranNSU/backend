@@ -141,7 +141,7 @@ async def get_user_performed_trainings(
             .selectinload(Training.perfomable_exercises)
             .selectinload(PerfomableExercise.sets),
 
-            selectinload(PlannedTrainnings.training)
+            selectinload(UserPerformedTraining.training)
             .selectinload(Training.perfomable_exercises)
             .selectinload(PerfomableExercise.exercise),
         )

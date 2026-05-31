@@ -22,6 +22,7 @@ import os
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
+from cv_service.exercises import EXERCISE_MAP
 from cv_service.live import LiveAnalyzer
 
 
@@ -34,7 +35,7 @@ MODEL_PATH = os.environ.get(
 )
 
 
-_SUPPORTED_EXERCISES = {"squat"}
+_SUPPORTED_EXERCISES = set(EXERCISE_MAP.keys())
 
 
 @router.websocket("/ws/{exercise}")
@@ -53,7 +54,7 @@ async def ws_live(websocket: WebSocket, exercise: str):
         await websocket.close()
         return
 
-    analyzer = LiveAnalyzer(MODEL_PATH)
+    analyzer = LiveAnalyzer(MODEL_PATH, exercise=exercise)
     try:
         while True:
             msg = await websocket.receive()
@@ -68,7 +69,7 @@ async def ws_live(websocket: WebSocket, exercise: str):
                     cmd = None
                 if cmd == "reset":
                     analyzer.close()
-                    analyzer = LiveAnalyzer(MODEL_PATH)
+                    analyzer = LiveAnalyzer(MODEL_PATH, exercise=exercise)
                     await websocket.send_json({"status": "reset"})
                 continue
 

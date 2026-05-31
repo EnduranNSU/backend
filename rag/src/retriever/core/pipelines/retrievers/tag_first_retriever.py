@@ -10,23 +10,20 @@ class TagFirstRetriever:
         self.collection_name = collection_name
         self.client = QdrantClient(f"http://{config.qdrant.host}:{config.qdrant.port}")
     
-    def __call__(self, embedded_queries: list[torch.Tensor], tags: list[str], **kwargs):
+    def __call__(self, embedded_queries: list[torch.Tensor], tags: list[str], limit: int | None = None, **kwargs):
+        fetch_n = limit * 4 if limit is not None else 5
+        query_filter = (
+            Filter(should=[FieldCondition(key="tags", match=MatchAny(any=tags))])
+            if tags else None
+        )
         results = []
         for embedding in embedded_queries:
-            hits = self.client.search(
+            resp = self.client.query_points(
                 collection_name=self.collection_name,
-                query_vector= embedding.tolist(),
-                limit=5,
-
-                query_filter=Filter(
-                    should=[
-                        FieldCondition(
-                            key="tags",
-                            match=MatchAny(any=tags)
-                        )
-                    ]
-                )
+                query=embedding.tolist(),
+                limit=fetch_n,
+                query_filter=query_filter,
             )
-            results.extend(hits)
+            results.extend(resp.points)
         return results
 

@@ -1,3 +1,4 @@
 from .batch_quadrant_retriever import BatchQuadrantRetriever
 from .tag_first_retriever import TagFirstRetriever
 from .tag_only_retriever import TagOnlyRetriever
+from .hybrid_retriever import HybridRetriever
