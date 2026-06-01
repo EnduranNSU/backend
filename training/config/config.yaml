@@ -1,0 +1,19 @@
+db:
+  user: postgres
+  password: password
+  dbname: myapp
+  host: postgres
+  port: 5432
+logger:
+  level: debug
+  console:
+    enable: true
+    encoding: json
+  file:
+    dirpath: logs
+    enable: false
+    maxage:
+    maxsize:
+auth:
+  base_url: "http://auth:8082"
+  

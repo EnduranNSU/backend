@@ -1,0 +1,19 @@
+http:
+  addr: ":8082"
+
+db:
+  dsn: "postgres://postgres:password@postgres:5432/myapp?sslmode=disable"
+  
+logger:
+  level: debug
+  console:
+    enable: true
+    encoding: json
+  file:
+    dirpath: logs
+    enable: false
+
+auth:
+  secret_key: "test-secret-key-for-development-only-12345"
+  algorithm: "HS256"
+  access_token_expiration_minutes: 1000000

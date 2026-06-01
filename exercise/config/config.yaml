@@ -1,0 +1,25 @@
+db:
+  user: postgres
+  password: password
+  dbname: myapp
+  host: postgres
+  port: 5432
+s3:
+  host: "minio:9000"
+  user: root
+  password: password
+  bucket: exercises
+  secure: false
+logger:
+  level: debug
+  console:
+    enable: true
+    encoding: json
+  file:
+    dirpath: logs
+    enable: false
+    maxage:
+    maxsize:
+auth:
+  base_url: "http://auth:8082"
+  
