@@ -37,6 +37,7 @@ class HybridRetriever:
                 resp = self.client.query_points(
                     collection_name=self.collection_name,
                     query=vec,
+                    using="dense",
                     limit=fetch_n,
                     query_filter=chunk_filter,
                 )

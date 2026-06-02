@@ -16,6 +16,7 @@ class TagOnlyRetriever:
             resp = self.client.query_points(
                 collection_name=self.collection_name,
                 query=embedding.tolist(),
+                using="dense",
                 limit=5,
                 query_filter=Filter(
                     must=[
