@@ -17,3 +17,10 @@ distribution = false
 [tool.pdm.scripts]
 start.cmd = "python ./src/main.py"
 start.env = {PYTHONPATH = "./src"}
+
+[dependency-groups]
+test = [
+    "pytest>=9.0.3",
+    "pytest-asyncio>=1.4.0",
+    "pytest-cov>=7.1.0",
+]

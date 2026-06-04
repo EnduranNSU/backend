@@ -29,3 +29,9 @@ model/
 # Logs
 **/*.log
 airflow/logs/
+
+# pytest / coverage artifacts
+**/.coverage
+**/coverage.xml
+**/pytest.xml
+**/htmlcov/

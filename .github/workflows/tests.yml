@@ -1,0 +1,133 @@
+name: tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+# Cancel in-flight runs on the same ref to save the runner pool.
+concurrency:
+  group: tests-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  actions: read
+  pull-requests: write   # to post the coverage summary as a PR comment
+
+jobs:
+  unit:
+    name: unit (${{ matrix.service }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        service: [agent, backend]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install pdm
+        run: pip install --upgrade pip pdm
+
+      - name: Cache pdm packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pdm
+          key: pdm-${{ runner.os }}-${{ matrix.service }}-${{ hashFiles(format('{0}/pdm.lock', matrix.service), format('{0}/pyproject.toml', matrix.service)) }}
+          restore-keys: |
+            pdm-${{ runner.os }}-${{ matrix.service }}-
+
+      - name: Install dependencies
+        working-directory: ${{ matrix.service }}
+        run: pdm install --dev
+
+      - name: Run tests with coverage
+        working-directory: ${{ matrix.service }}
+        run: |
+          pdm run pytest tests/ \
+            --cov=src \
+            --cov-branch \
+            --cov-report=xml \
+            --cov-report=term-missing \
+            --junitxml=pytest.xml
+
+      - name: Upload coverage artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-${{ matrix.service }}
+          path: |
+            ${{ matrix.service }}/coverage.xml
+            ${{ matrix.service }}/pytest.xml
+          retention-days: 7
+
+      - name: Append coverage to step summary
+        if: always()
+        working-directory: ${{ matrix.service }}
+        run: |
+          if [ -f coverage.xml ]; then
+            pct=$(python -c "
+          import xml.etree.ElementTree as ET
+          r = ET.parse('coverage.xml').getroot()
+          print(f\"{float(r.attrib.get('line-rate', 0)) * 100:.1f}\")
+          ")
+            br=$(python -c "
+          import xml.etree.ElementTree as ET
+          r = ET.parse('coverage.xml').getroot()
+          print(f\"{float(r.attrib.get('branch-rate', 0)) * 100:.1f}\")
+          ")
+            echo "### ${{ matrix.service }} coverage" >> "$GITHUB_STEP_SUMMARY"
+            echo "" >> "$GITHUB_STEP_SUMMARY"
+            echo "| metric | value |" >> "$GITHUB_STEP_SUMMARY"
+            echo "|---|---|" >> "$GITHUB_STEP_SUMMARY"
+            echo "| lines | **${pct}%** |" >> "$GITHUB_STEP_SUMMARY"
+            echo "| branches | **${br}%** |" >> "$GITHUB_STEP_SUMMARY"
+            echo "" >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "### ${{ matrix.service }} — coverage missing" >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+  coverage-summary:
+    name: combined coverage
+    needs: unit
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts/
+          pattern: coverage-*
+          merge-multiple: false
+
+      - name: Print combined summary
+        run: |
+          echo "## Test coverage" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "| service | lines | branches |" >> "$GITHUB_STEP_SUMMARY"
+          echo "|---|---|---|" >> "$GITHUB_STEP_SUMMARY"
+          for dir in artifacts/coverage-*; do
+            svc=$(basename "$dir" | sed 's/coverage-//')
+            xml="$dir/coverage.xml"
+            if [ -f "$xml" ]; then
+              pct=$(python -c "
+          import xml.etree.ElementTree as ET
+          r = ET.parse('$xml').getroot()
+          print(f\"{float(r.attrib.get('line-rate', 0)) * 100:.1f}\")
+          ")
+              br=$(python -c "
+          import xml.etree.ElementTree as ET
+          r = ET.parse('$xml').getroot()
+          print(f\"{float(r.attrib.get('branch-rate', 0)) * 100:.1f}\")
+          ")
+              echo "| $svc | ${pct}% | ${br}% |" >> "$GITHUB_STEP_SUMMARY"
+            else
+              echo "| $svc | — | — |" >> "$GITHUB_STEP_SUMMARY"
+            fi
+          done

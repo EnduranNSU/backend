@@ -26,3 +26,11 @@ exercises.env = {PYTHONPATH = "./src"}
 
 setup.cmd = "alembic revision --autogenerate -m \"{initial migration}\" && alembic upgrade head && python ./src/backend/database/scripts/set_exercises.py"
 setup.env = {PYTHONPATH = "./src"}
+
+[dependency-groups]
+test = [
+    "pytest>=9.0.3",
+    "pytest-asyncio>=1.4.0",
+    "pytest-cov>=7.1.0",
+    "aiosqlite>=0.22.1",
+]
