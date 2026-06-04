@@ -1,0 +1,28 @@
+enduran.duckdns.org {
+    # WebSocket для CV тренера — срезаем /api и проксируем
+    handle /api/cv/ws/* {
+        uri strip_prefix /api
+        reverse_proxy gateway:8001 {
+            header_up Host {host}
+            transport http {
+                versions 1.1
+            }
+        }
+    }
+
+    # REST API — срезаем /api и проксируем
+    handle /api/* {
+        uri strip_prefix /api
+        reverse_proxy gateway:8001 {
+            header_up Host {host}
+            header_up X-Real-IP {remote_host}
+        }
+    }
+
+    # Статика фронтенда
+    handle {
+        root * /srv
+        try_files {path} /index.html
+        file_server
+    }
+}

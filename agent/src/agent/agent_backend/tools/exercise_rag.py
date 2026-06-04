@@ -10,7 +10,7 @@ async def tool(query: str, exercise_name: str, info_category:str):
 openai_description = {
     "type": "function",
     "function": {
-            "name": "exercise_rag_get",
+            "name": "get_exercise_rag",
             "description": "Эндпоинт для RAG по базе знаний об упражнениях. ДОЛЖЕН ИСПОЛЬЗОВАТЬСЯ, когда пользователю нужен совет по технике, ограничениям, альтернативам, типичным ошибкам и так далее связанными с упражнениями.",
             "parameters": {
                 "type": "object",
@@ -41,6 +41,6 @@ openai_description = {
 }
 
 
-exercise_rag_get_tool = AgentTool("exercise_rag_get", tool, openai_description)
+get_exercise_rag_tool = AgentTool("get_exercise_rag", tool, openai_description)
 
 
