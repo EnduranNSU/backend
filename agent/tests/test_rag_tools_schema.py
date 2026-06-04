@@ -15,7 +15,7 @@ import pytest
 from unittest.mock import patch, AsyncMock, MagicMock
 
 from agent.agent_backend.tools import tools
-from agent.agent_backend.tools.exercise_rag import exercise_rag_get_tool
+from agent.agent_backend.tools.exercise_rag import get_exercise_rag_tool
 from agent.agent_backend.tools.users_rag_download_tool import user_rag_download_tool
 from agent.agent_backend.tools.users_rag_upload_tool import user_rag_upload_tool
 
@@ -23,7 +23,7 @@ from agent.agent_backend.tools.users_rag_upload_tool import user_rag_upload_tool
 # ─── Name-vs-registration consistency ────────────────────────────────────────
 
 @pytest.mark.parametrize("tool_obj", [
-    exercise_rag_get_tool,
+    get_exercise_rag_tool,
     user_rag_download_tool,
     user_rag_upload_tool,
 ])
