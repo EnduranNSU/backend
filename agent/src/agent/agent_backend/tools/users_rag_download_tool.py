@@ -20,10 +20,9 @@ openai_description = {
                         "type": "string",
                         "description": "Запрос для РАГа"
                     },
-
-                }
-            },
-            "required": ["query"]
+                },
+                "required": ["query"]
+            }
     }
 }
 

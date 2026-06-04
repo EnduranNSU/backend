@@ -10,7 +10,7 @@ async def tool(query: str, exercise_name: str, info_category:str):
 openai_description = {
     "type": "function",
     "function": {
-            "name": "exrcise_rag_get",
+            "name": "exercise_rag_get",
             "description": "Эндпоинт для RAG по базе знаний об упражнениях. ДОЛЖЕН ИСПОЛЬЗОВАТЬСЯ, когда пользователю нужен совет по технике, ограничениям, альтернативам, типичным ошибкам и так далее связанными с упражнениями.",
             "parameters": {
                 "type": "object",

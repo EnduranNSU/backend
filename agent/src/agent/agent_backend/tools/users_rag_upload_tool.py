@@ -20,9 +20,9 @@ openai_description = {
                         "type": "string",
                         "description": "Информация, которую требуется сохранить в RAG"
                     }
-                }
-            },
-            "required": ["info"]
+                },
+                "required": ["info"]
+            }
     }
 }
 
